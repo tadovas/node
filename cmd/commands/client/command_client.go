@@ -56,7 +56,7 @@ func NewCommandWith(
 	nats_discovery.Bootstrap()
 	openvpn.Bootstrap()
 
-	keystoreDirectory := filepath.Join(options.Directories.DataDir, "keystore")
+	keystoreDirectory := filepath.Join(options.Directories.Data, "keystore")
 	keystoreInstance := keystore.NewKeyStore(keystoreDirectory, keystore.StandardScryptN, keystore.StandardScryptP)
 
 	identityManager := identity.NewIdentityManager(keystoreInstance)
@@ -76,7 +76,7 @@ func NewCommandWith(
 
 	locationDetector := location.NewDetector(
 		ipResolver,
-		filepath.Join(options.Directories.ConfigDir, options.LocationDatabase),
+		filepath.Join(options.Directories.Config, options.LocationDatabase),
 	)
 
 	originalLocationCache := location.NewLocationCache(locationDetector)
@@ -84,8 +84,8 @@ func NewCommandWith(
 	vpnClientFactory := connection.ConfigureVpnClientFactory(
 		mysteriumClient,
 		options.OpenvpnBinary,
-		options.Directories.ConfigDir,
-		options.Directories.RuntimeDir,
+		options.Directories.Config,
+		options.Directories.Runtime,
 		signerFactory,
 		statsKeeper,
 		originalLocationCache,

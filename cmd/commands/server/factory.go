@@ -60,7 +60,7 @@ func NewCommandWith(
 	natService nat.NATService,
 ) *Command {
 
-	keystoreDirectory := filepath.Join(options.DirectoryData, "keystore")
+	keystoreDirectory := filepath.Join(options.Directories.Data, "keystore")
 	keystoreInstance := keystore.NewKeyStore(keystoreDirectory, keystore.StandardScryptN, keystore.StandardScryptP)
 	createSigner := func(id identity.Identity) identity.Signer {
 		return identity.NewSigner(keystoreInstance, id)
@@ -77,9 +77,9 @@ func NewCommandWith(
 	if options.LocationCountry != "" {
 		locationResolver = location.NewResolverFake(options.LocationCountry)
 	} else if options.LocationDatabase != "" {
-		locationResolver = location.NewResolver(filepath.Join(options.DirectoryConfig, options.LocationDatabase))
+		locationResolver = location.NewResolver(filepath.Join(options.Directories.Config, options.LocationDatabase))
 	} else {
-		locationResolver = location.NewResolver(filepath.Join(options.DirectoryConfig, defaultLocationDatabase))
+		locationResolver = location.NewResolver(filepath.Join(options.Directories.Config, defaultLocationDatabase))
 	}
 
 	locationDetector := location.NewDetectorWithLocationResolver(ipResolver, locationResolver)
@@ -117,8 +117,8 @@ func NewCommandWith(
 		vpnServerFactory: func(manager session.Manager, primitives *tls.Primitives, callback state.Callback) openvpn.Process {
 			// TODO: check options for --openvpn-transport option
 			serverConfigGenerator := openvpn.NewServerConfigGenerator(
-				options.DirectoryRuntime,
-				options.DirectoryConfig,
+				options.Directories.Runtime,
+				options.Directories.Config,
 				primitives,
 				options.OpenvpnPort,
 				options.Protocol,
@@ -137,6 +137,7 @@ func NewCommandWith(
 		checkOpenvpn: func() error {
 			return openvpn.CheckOpenvpnBinary(options.OpenvpnBinary)
 		},
+		checkDirectories:            options.Directories.Check,
 		protocol:                    options.Protocol,
 		proposalAnnouncementStopped: &sync.WaitGroup{},
 	}

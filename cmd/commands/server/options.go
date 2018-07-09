@@ -21,15 +21,12 @@ import (
 	"flag"
 	"github.com/mysterium/node/cmd"
 	"github.com/mysterium/node/metadata"
-	"path/filepath"
 )
 
 // CommandOptions describes options which are required to start Command
 type CommandOptions struct {
-	DirectoryConfig  string
-	DirectoryRuntime string
-	DirectoryData    string
-	OpenvpnBinary    string
+	Directories   cmd.DirectoryOptions
+	OpenvpnBinary string
 
 	Identity   string
 	Passphrase string
@@ -58,24 +55,11 @@ const defaultLocationDatabase = "GeoLite2-Country.mmdb"
 // ParseArguments parses CLI flags and adds to CommandOptions structure
 func ParseArguments(args []string) (options CommandOptions, err error) {
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
-	flags.StringVar(
-		&options.DirectoryData,
-		"data-dir",
-		cmd.GetDataDirectory(),
-		"Data directory containing keystore & other persistent files",
-	)
-	flags.StringVar(
-		&options.DirectoryConfig,
-		"config-dir",
-		filepath.Join(cmd.GetDataDirectory(), "config"),
-		"Configs directory containing all configuration files",
-	)
-	flags.StringVar(
-		&options.DirectoryRuntime,
-		"runtime-dir",
-		filepath.Join(cmd.GetDataDirectory(), "run"),
-		"Runtime writable directory for temp files",
-	)
+
+	err = cmd.ParseFromCmdArgs(flags, &options.Directories)
+	if err != nil {
+		return
+	}
 
 	flags.StringVar(
 		&options.OpenvpnBinary,
