@@ -39,6 +39,11 @@ script:
       bin/test_e2e;
       bin/package_all $BUILD_VERSION;
     fi
+  #ugly hack - will be removed when stages will be introduced
+  #we need to package everything on master and tags too - not only on PR's
+  - if [ "$TRAVIS_BRANCH" == "master" ] || [ "$TRAVIS_BRANCH" == "$TRAVIS_TAG" ]; then
+      bin/package_all $BUILD_VERSION;
+    fi
 
 deploy:
   # Development bleeding-edge release (on master commits only)
