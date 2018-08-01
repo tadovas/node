@@ -18,9 +18,9 @@
 package client
 
 import (
-	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/julienschmidt/httprouter"
 	"github.com/mysterium/node/blockchain"
 	"github.com/mysterium/node/blockchain/registry"
 	"github.com/mysterium/node/client/connection"
@@ -90,42 +90,30 @@ func NewCommand(options CommandOptions) *Command {
 
 	httpAPIServer := tequilapi.NewServer(options.TequilapiAddress, options.TequilapiPort, router)
 
-	command := &Command{
-		connectionManager: connectionManager,
-		httpAPIServer:     httpAPIServer,
-		checkOpenvpn: func() error {
-			return openvpn.CheckOpenvpnBinary(options.OpenvpnBinary)
-		},
-		originalLocationCache: originalLocationCache,
-	}
-
 	tequilapi_endpoints.AddRoutesForIdentities(router, identityManager, mysteriumClient, signerFactory)
 	tequilapi_endpoints.AddRoutesForConnection(router, connectionManager, ipResolver, statsKeeper)
 	tequilapi_endpoints.AddRoutesForLocation(router, connectionManager, locationDetector, originalLocationCache)
 	tequilapi_endpoints.AddRoutesForProposals(router, mysteriumClient)
-	tequilapi_endpoints.AddRouteForStop(router, node_cmd.SoftKiller(command.Kill))
 
-	fmt.Println("Using Eth endopoint:", networkDefinition.EtherClientRPC)
-	client, err := blockchain.NewClient(networkDefinition.EtherClientRPC)
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
+	return &Command{
+		options:               options,
+		network:               networkDefinition,
+		keystore:              keystoreInstance,
+		router:                router,
+		connectionManager:     connectionManager,
+		httpAPIServer:         httpAPIServer,
+		originalLocationCache: originalLocationCache,
 	}
-	fmt.Println("Using Contract at address:", networkDefinition.PaymentsContractAddress.String())
-	statusProvider, err := registry.NewIdentityRegistry(client, networkDefinition.PaymentsContractAddress)
-	if err != nil {
-		fmt.Println("Error2: ", err.Error())
-	}
-
-	registry.AddRegistrationEndpoint(router, registry.NewRegistrationDataProvider(keystoreInstance), statusProvider)
-
-	return command
 }
 
 //Command represent entrypoint for Mysterium client with top level components
 type Command struct {
+	options               CommandOptions
+	network               metadata.NetworkDefinition
+	keystore              *keystore.KeyStore
 	connectionManager     connection.Manager
+	router                *httprouter.Router
 	httpAPIServer         tequilapi.APIServer
-	checkOpenvpn          func() error
 	originalLocationCache location.Cache
 }
 
@@ -133,7 +121,7 @@ type Command struct {
 func (cmd *Command) Start() error {
 	log.Infof("Starting Mysterium Client (%s)", metadata.VersionAsString())
 
-	err := cmd.checkOpenvpn()
+	err := openvpn.CheckOpenvpnBinary(cmd.options.OpenvpnBinary)
 	if err != nil {
 		return err
 	}
@@ -144,6 +132,22 @@ func (cmd *Command) Start() error {
 	} else {
 		log.Info("Original country detected: ", originalLocation.Country)
 	}
+
+	tequilapi_endpoints.AddRouteForStop(cmd.router, node_cmd.SoftKiller(cmd.Kill))
+
+	log.Info("Using Eth endpoint: ", cmd.network.EtherClientRPC)
+	client, err := blockchain.NewClient(cmd.network.EtherClientRPC)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Using Contract at address:", cmd.network.PaymentsContractAddress.String())
+	statusProvider, err := registry.NewIdentityRegistry(client, cmd.network.PaymentsContractAddress)
+	if err != nil {
+		return err
+	}
+
+	registry.AddRegistrationEndpoint(cmd.router, registry.NewRegistrationDataProvider(cmd.keystore), statusProvider)
 
 	err = cmd.httpAPIServer.StartServing()
 	if err != nil {
