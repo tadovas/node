@@ -30,7 +30,7 @@ xgo \
     -targets=ios/* -out Mysterium -dest $DIR_TEMP \
     `pwd`/mobile/mysterium
 
-me= `whoami`
+me=`whoami`
 sudo chown -R $me ${DIR_FRAMEWORK}
 cp -vp bin/package/ios/Info.plist ${DIR_FRAMEWORK}/Versions/A/Resources/Info.plist
 
