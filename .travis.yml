@@ -3,6 +3,8 @@ os: linux
 language: go
 go: ["1.11"]
 
+go_import_path: github.com/mysteriumnetwork/node
+
 env:
   global:
     - BUILD_COMMIT=$TRAVIS_COMMIT
